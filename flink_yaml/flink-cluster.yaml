@@ -10,30 +10,20 @@ spec:
     taskmanager.numberOfTaskSlots: "1"  # 각 TaskManager에 할당할 슬롯의 개수
     log.file: "/opt/flink/log/flink-app.log"  # 로그 파일 경로
     log4j.configurationFile: "file:/opt/flink/conf/log4j.properties"  # Log4j 설정 파일 경로
+    plugin.dir: /opt/flink/opt  # 플러그인 경로 설정
+    s3.fs.impl: org.apache.hadoop.fs.s3a.S3AFileSystem  # S3 파일 시스템 설정
   jobManager:
     resource:
-      memory: "1024m"  # JobManager가 사용할 메모리 양
+      memory: "2048m"  # JobManager가 사용할 메모리 양
       cpu: 1  # JobManager가 사용할 CPU 코어 개수
     replicas: 1  # JobManager 인스턴스의 복제본 수 (보통 1개)
   taskManager:
     resource:
-      memory: "1024m"  # 각 TaskManager가 사용할 메모리 양
-      cpu: 1  # 각 TaskManager가 사용할 CPU 코어 개수
-    replicas: 2  # TaskManager 인스턴스의 복제본 수 (여기서는 2개)
+      memory: "2048m"  # 각 TaskManager가 사용할 메모리 양
+      cpu: 1 # 각 TaskManager가 사용할 CPU 코어 개수
+    replicas: 1  # TaskManager 인스턴스의 복제본 수 (여기서는 1개)
   podTemplate:
     spec:
-      volumes:
-        - name: s3-plugin
-          emptyDir: { }
-      initContainers:
-        - name: busybox
-          image: busybox:latest
-          volumeMounts:
-            - mountPath: /opt/flink/plugins/s3-fs-hadoop
-              name: s3-plugin
       containers:
         - name: flink-main-container  # Pod 내의 주 컨테이너 이름
           image: flink:1.15.0  # 사용할 Flink 도커 이미지 (여기서는 Flink 1.15 버전)
-          volumeMounts:
-            - mountPath: /opt/flink/plugins/s3-fs-hadoop
-              name: s3-plugin

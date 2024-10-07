@@ -1,56 +1,56 @@
 # EKS 클러스터용 Assume Role 정책 생성 (EKS 서비스가 역할을 가질 수 있도록 설정)
 data "aws_iam_policy_document" "eks_assume_role_policy" {
   statement {
-    actions = ["sts:AssumeRole"]  # 역할을 할당하는 동작
+    actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
-      identifiers = ["eks.amazonaws.com"]  # EKS 서비스가 역할을 가져갈 수 있도록 설정
+      identifiers = ["eks.amazonaws.com"]
     }
   }
 }
 
-# EKS 클러스터 역할 생성 (IAM 역할을 클러스터에 할당)
+# EKS 클러스터 역할 생성
 resource "aws_iam_role" "eks_cluster_role" {
-  name               = "${var.cluster_name}-eks-cluster-role"  # 역할 이름을 클러스터 이름 기반으로 설정
-  assume_role_policy = data.aws_iam_policy_document.eks_assume_role_policy.json  # Assume Role 정책 적용
+  name               = "${var.cluster_name}-eks-cluster-role"
+  assume_role_policy = data.aws_iam_policy_document.eks_assume_role_policy.json
   tags = {
-    Name = "${var.cluster_name}-eks-cluster-role"  # 역할 이름 태그
+    Name = "${var.cluster_name}-eks-cluster-role"
   }
 }
 
 # EKS 클러스터에 필요한 정책 부착 (AmazonEKSClusterPolicy)
 resource "aws_iam_role_policy_attachment" "eks_cluster_policy_attachment" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"  # 클러스터 관리 정책
-  role       = aws_iam_role.eks_cluster_role.name  # 역할에 정책 부착
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+  role       = aws_iam_role.eks_cluster_role.name
 }
 
 # EKS 서비스에 필요한 정책 부착 (AmazonEKSServicePolicy)
 resource "aws_iam_role_policy_attachment" "eks_service_policy_attachment" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"  # 서비스 관련 정책
-  role       = aws_iam_role.eks_cluster_role.name  # 역할에 정책 부착
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
+  role       = aws_iam_role.eks_cluster_role.name
 }
 
 # EKS 워커 노드를 위한 Assume Role 정책 생성 (EC2 서비스 역할)
 data "aws_iam_policy_document" "eks_worker_assume_role_policy" {
   statement {
-    actions = ["sts:AssumeRole"]  # 역할을 할당하는 동작
+    actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]  # EC2 서비스가 역할을 가져갈 수 있도록 설정
+      identifiers = ["ec2.amazonaws.com"]
     }
   }
 }
 
 # EKS 워커 노드용 EBS 정책 생성 (EBS 관리 권한 부여)
 resource "aws_iam_policy" "eks_worker_ebs_policy" {
-  name        = "eks_worker_ebs_policy"  # 정책 이름
-  description = "EKS worker nodes policy for managing EBS volumes"  # 정책 설명
+  name        = "eks_worker_ebs_policy"
+  description = "EKS worker nodes policy for managing EBS volumes"
   policy      = jsonencode({
     "Version" : "2012-10-17",
     "Statement" : [
       {
-        "Effect" : "Allow",  # 허용
-        "Action" : [  # EC2에서 EBS 관련 작업을 허용
+        "Effect" : "Allow",
+        "Action" : [
           "ec2:CreateVolume",
           "ec2:DeleteVolume",
           "ec2:AttachVolume",
@@ -60,7 +60,7 @@ resource "aws_iam_policy" "eks_worker_ebs_policy" {
           "ec2:DescribeVolumeAttribute",
           "ec2:CreateTags"
         ],
-        "Resource" : "*"  # 모든 리소스에 대해 허용
+        "Resource" : "*"
       }
     ]
   })
@@ -68,68 +68,76 @@ resource "aws_iam_policy" "eks_worker_ebs_policy" {
 
 # EKS 워커 노드 역할에 EBS 정책 부착
 resource "aws_iam_role_policy_attachment" "eks_worker_policy_attach" {
-  role       = aws_iam_role.eks_worker_role.name  # 역할에 정책 부착
-  policy_arn = aws_iam_policy.eks_worker_ebs_policy.arn  # EBS 관리 정책 부착
+  role       = aws_iam_role.eks_worker_role.name
+  policy_arn = aws_iam_policy.eks_worker_ebs_policy.arn
 }
 
 # EKS 워커 노드용 IAM 역할 생성
 resource "aws_iam_role" "eks_worker_role" {
-  name               = "${var.cluster_name}-eks-worker-role"  # 역할 이름 설정
-  assume_role_policy = data.aws_iam_policy_document.eks_worker_assume_role_policy.json  # EC2 서비스 역할 Assume Role 정책 적용
+  name               = "${var.cluster_name}-eks-worker-role"
+  assume_role_policy = data.aws_iam_policy_document.eks_worker_assume_role_policy.json
   tags = {
-    Name = "${var.cluster_name}-eks-worker-role"  # 역할 이름 태그
+    Name = "${var.cluster_name}-eks-worker-role"
   }
 }
 
 # EKS 워커 노드 역할에 필요한 정책 부착 (AmazonEKSWorkerNodePolicy)
 resource "aws_iam_role_policy_attachment" "eks_worker_node_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"  # 워커 노드 관리 정책
-  role       = aws_iam_role.eks_worker_role.name  # 역할에 정책 부착
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+  role       = aws_iam_role.eks_worker_role.name
 }
 
 # EKS CNI 정책 부착 (AmazonEKS_CNI_Policy)
 resource "aws_iam_role_policy_attachment" "eks_cni_policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"  # 네트워크 인터페이스 정책
-  role       = aws_iam_role.eks_worker_role.name  # 역할에 정책 부착
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+  role       = aws_iam_role.eks_worker_role.name
 }
 
 # EC2 컨테이너 레지스트리 읽기 전용 정책 부착 (AmazonEC2ContainerRegistryReadOnly)
 resource "aws_iam_role_policy_attachment" "ec2_container_registry_read_only" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"  # 컨테이너 레지스트리 읽기 정책
-  role       = aws_iam_role.eks_worker_role.name  # 역할에 정책 부착
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  role       = aws_iam_role.eks_worker_role.name
 }
 
-# NGINX Ingress Controller용 정책 생성
-resource "aws_iam_policy" "nginx_ingress_policy" {
-  name        = "nginx-ingress-policy"  # 정책 이름
-  path        = "/"  # 경로 설정
-  description = "IAM policy for NGINX Ingress Controller"  # 정책 설명
+# S3 접근을 위한 IAM 정책 생성
+resource "aws_iam_policy" "eks_s3_access_policy" {
+  name        = "EKSWorkerS3AccessPolicy"
+  description = "IAM policy for EKS worker nodes to access S3"
   policy      = jsonencode({
-    "Version" : "2012-10-17",
-    "Statement" : [
+    Version = "2012-10-17",
+    Statement = [
       {
-        "Effect" : "Allow",  # 허용
-        "Action" : [  # EC2 자원 관련 권한 부여
-          "ec2:DescribeAccountAttributes",
-          "ec2:DescribeAddresses",
-          "ec2:DescribeInternetGateways"
+        Effect   = "Allow",
+        Action   = [
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:PutObject"
         ],
-        "Resource" : "*"  # 모든 리소스에 대해 허용
+        Resource = [
+          "arn:aws:s3:::flink-kafka-test-s3",
+          "arn:aws:s3:::flink-kafka-test-s3/*"
+        ]
       }
     ]
   })
 }
 
+# EKS 워커 노드 역할에 S3 접근 정책 부착
+resource "aws_iam_role_policy_attachment" "eks_worker_s3_policy" {
+  policy_arn = aws_iam_policy.eks_s3_access_policy.arn
+  role       = aws_iam_role.eks_worker_role.name
+}
+
 # EKS 워커 노드용 로드 밸런서 관리 정책 생성
 resource "aws_iam_policy" "eks_worker_load_balancer_policy" {
-  name        = "EKSWorkerLoadBalancerPolicy"  # 정책 이름
-  description = "IAM policy for EKS worker nodes to manage Load Balancers"  # 정책 설명
+  name        = "EKSWorkerLoadBalancerPolicy"
+  description = "IAM policy for EKS worker nodes to manage Load Balancers"
   policy      = jsonencode({
     Version = "2012-10-17",
     Statement = [
       {
-        Effect   = "Allow",  # 허용
-        Action   = [  # 로드 밸런서 및 타겟 그룹 관련 작업 허용
+        Effect   = "Allow",
+        Action   = [
           "elasticloadbalancing:DescribeLoadBalancers",
           "elasticloadbalancing:DescribeListeners",
           "elasticloadbalancing:DescribeTargetGroups",
@@ -143,7 +151,7 @@ resource "aws_iam_policy" "eks_worker_load_balancer_policy" {
           "elasticloadbalancing:RegisterTargets",
           "elasticloadbalancing:DeregisterTargets"
         ],
-        Resource = "*"  # 모든 리소스에 대해 허용
+        Resource = "*"
       }
     ]
   })
@@ -151,19 +159,37 @@ resource "aws_iam_policy" "eks_worker_load_balancer_policy" {
 
 # 워커 노드 역할에 로드 밸런서 정책 부착
 resource "aws_iam_role_policy_attachment" "eks_worker_load_balancer_attachment" {
-  policy_arn = aws_iam_policy.eks_worker_load_balancer_policy.arn  # 로드 밸런서 정책 ARN 참조
-  role       = aws_iam_role.eks_worker_role.name  # 역할에 정책 부착
+  policy_arn = aws_iam_policy.eks_worker_load_balancer_policy.arn
+  role       = aws_iam_role.eks_worker_role.name
 }
 
-# ALB 컨트롤러 정책 생성 (로드 밸런서 관련 역할 및 정책 정의)
+# NGINX Ingress Controller용 정책 생성
+resource "aws_iam_policy" "nginx_ingress_policy" {
+  name        = "nginx-ingress-policy"
+  description = "IAM policy for NGINX Ingress Controller"
+  policy      = jsonencode({
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Effect" : "Allow",
+        "Action" : [
+          "ec2:DescribeAccountAttributes",
+          "ec2:DescribeAddresses",
+          "ec2:DescribeInternetGateways"
+        ],
+        "Resource" : "*"
+      }
+    ]
+  })
+}
+
+# ALB 컨트롤러 정책 생성
 resource "aws_iam_policy" "alb_controller_policy" {
-  name        = "AWSLoadBalancerControllerIAMPolicy"  # 정책 이름
-  path        = "/"  # 경로 설정
-  description = "IAM policy for the AWS Load Balancer Controller"  # 정책 설명
+  name        = "AWSLoadBalancerControllerIAMPolicy"
+  description = "IAM policy for the AWS Load Balancer Controller"
   policy      = jsonencode({
     Version = "2012-10-17",
     Statement = [
-      # 다양한 EC2 및 로드 밸런서 관련 권한 설정
       {
         Effect = "Allow",
         Action = [
@@ -194,7 +220,6 @@ resource "aws_iam_policy" "alb_controller_policy" {
         ],
         Resource = "*"
       },
-      # 보안 그룹 및 로드 밸런서 관련 작업
       {
         Effect = "Allow",
         Action = [
@@ -215,28 +240,33 @@ resource "aws_iam_policy" "alb_controller_policy" {
   })
 }
 
-# ALB 컨트롤러 Assume Role 정책 생성 (ALB 서비스 역할 설정)
+# ALB 컨트롤러 Assume Role 정책 생성
 data "aws_iam_policy_document" "alb_controller_assume_role_policy" {
   statement {
-    actions = ["sts:AssumeRole"]  # ALB 컨트롤러에 역할 할당
+    actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
-      identifiers = ["elasticloadbalancing.amazonaws.com"]  # ALB 서비스가 역할을 가질 수 있도록 설정
+      identifiers = ["elasticloadbalancing.amazonaws.com"]
     }
   }
 }
 
 # ALB 컨트롤러 IAM 역할 생성
 resource "aws_iam_role" "alb_controller_role" {
-  name               = "${var.cluster_name}-alb-controller-role"  # 역할 이름 설정
-  assume_role_policy = data.aws_iam_policy_document.alb_controller_assume_role_policy.json  # Assume Role 정책 적용
+  name               = "${var.cluster_name}-alb-controller-role"
+  assume_role_policy = data.aws_iam_policy_document.alb_controller_assume_role_policy.json
   tags = {
-    Name = "${var.cluster_name}-alb-controller-role"  # 역할 이름 태그
+    Name = "${var.cluster_name}-alb-controller-role"
   }
 }
 
+# AWS Glue 접근을 위한 IAM 정책 부착 (Glue를 Iceberg 카탈로그로 사용하기 위함)
+resource "aws_iam_role_policy_attachment" "eks_worker_glue_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole"
+  role       = aws_iam_role.eks_worker_role.name
+}
 # ALB 컨트롤러 역할에 정책 부착
 resource "aws_iam_role_policy_attachment" "alb_controller_policy_attachment" {
-  policy_arn = aws_iam_policy.alb_controller_policy.arn  # ALB 컨트롤러 정책 ARN 참조
-  role       = aws_iam_role.alb_controller_role.name  # 역할에 정책 부착
+  policy_arn = aws_iam_policy.alb_controller_policy.arn
+  role       = aws_iam_role.alb_controller_role.name
 }
