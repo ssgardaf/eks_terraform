@@ -1,0 +1,39 @@
+apiVersion: flink.apache.org/v1beta1  # FlinkDeployment의 API 버전
+kind: FlinkDeployment  # 리소스의 종류, 여기서는 Flink 클러스터 배포를 의미
+metadata:
+  name: flink-session-cluster  # Flink 클러스터의 이름
+  namespace: flink-operator  # 클러스터가 배포될 네임스페이스
+spec:
+  flinkVersion: v1_15  # Flink 버전 지정 (1.15 버전 사용)
+  serviceAccount: flink  # 이 클러스터에서 사용할 Kubernetes 서비스 계정 이름
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "1"  # 각 TaskManager에 할당할 슬롯의 개수
+    log.file: "/opt/flink/log/flink-app.log"  # 로그 파일 경로
+    log4j.configurationFile: "file:/opt/flink/conf/log4j.properties"  # Log4j 설정 파일 경로
+  jobManager:
+    resource:
+      memory: "1024m"  # JobManager가 사용할 메모리 양
+      cpu: 1  # JobManager가 사용할 CPU 코어 개수
+    replicas: 1  # JobManager 인스턴스의 복제본 수 (보통 1개)
+  taskManager:
+    resource:
+      memory: "1024m"  # 각 TaskManager가 사용할 메모리 양
+      cpu: 1  # 각 TaskManager가 사용할 CPU 코어 개수
+    replicas: 2  # TaskManager 인스턴스의 복제본 수 (여기서는 2개)
+  podTemplate:
+    spec:
+      volumes:
+        - name: s3-plugin
+          emptyDir: { }
+      initContainers:
+        - name: busybox
+          image: busybox:latest
+          volumeMounts:
+            - mountPath: /opt/flink/plugins/s3-fs-hadoop
+              name: s3-plugin
+      containers:
+        - name: flink-main-container  # Pod 내의 주 컨테이너 이름
+          image: flink:1.15.0  # 사용할 Flink 도커 이미지 (여기서는 Flink 1.15 버전)
+          volumeMounts:
+            - mountPath: /opt/flink/plugins/s3-fs-hadoop
+              name: s3-plugin

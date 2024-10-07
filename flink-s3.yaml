@@ -1,0 +1,20 @@
+podTemplate:
+  spec:
+    initContainers:  # Init Container로 플러그인 설치
+    - name: install-s3-plugin
+      image: alpine:3.15
+      command:
+        - sh
+        - -c
+        - |
+          apk add --no-cache curl && \
+          curl -o /opt/flink/plugins/flink-s3-fs-hadoop/flink-s3-fs-hadoop-1.15.0.jar https://repo1.maven.org/maven2/org/apache/flink/flink-s3-fs-hadoop/1.15.0/flink-s3-fs-hadoop-1.15.0.jar
+      volumeMounts:
+        - name: flink-plugins
+          mountPath: /opt/flink/plugins
+    containers:
+    - name: flink-main-container
+      image: flink:1.15.0
+      volumeMounts:
+        - name: flink-plugins
+          mountPath: /opt/flink/plugins
