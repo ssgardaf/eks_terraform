@@ -4,13 +4,13 @@ metadata:
   name: flink-session-cluster  # Flink 클러스터의 이름
   namespace: flink-operator  # 클러스터가 배포될 네임스페이스
 spec:
-  flinkVersion: v1_15  # Flink 버전 지정 (1.15 버전 사용)
+  flinkVersion: v1_17  # Flink 버전 지정 (1.15 버전 사용)
   serviceAccount: flink  # 이 클러스터에서 사용할 Kubernetes 서비스 계정 이름
   flinkConfiguration:
     taskmanager.numberOfTaskSlots: "1"  # 각 TaskManager에 할당할 슬롯의 개수
     log.file: "/opt/flink/log/flink-app.log"  # 로그 파일 경로
     log4j.configurationFile: "file:/opt/flink/conf/log4j.properties"  # Log4j 설정 파일 경로
-    classpath: "/opt/flink/lib/*:/opt/flink/lib/custom-lib/*"  # 필요한 경우 classpath를 추가
+    classpath: "/opt/flink/lib/*:/opt/flink/lib/custom-lib/*:/opt/flink/hadoop/hadoop-3.2.0/share/hadoop/common/*:/opt/flink/hadoop/hadoop-3.2.0/share/hadoop/hdfs/*:/opt/flink/hadoop/hadoop-3.2.0/share/hadoop/yarn/*"
   jobManager:
     resource:
       memory: "1024m"  # JobManager가 사용할 메모리 양
@@ -36,10 +36,10 @@ spec:
             - -c
             - |
               mkdir -p /opt/flink/plugins/s3-fs-hadoop/
-              wget https://repo1.maven.org/maven2/org/apache/flink/flink-s3-fs-hadoop/1.15.0/flink-s3-fs-hadoop-1.15.0.jar -P /opt/flink/plugins/s3-fs-hadoop/
+              wget https://repo1.maven.org/maven2/org/apache/flink/flink-s3-fs-hadoop/1.17.0/flink-s3-fs-hadoop-1.17.0.jar -P /opt/flink/plugins/s3-fs-hadoop/
           volumeMounts:
             - mountPath: /opt/flink/plugins/s3-fs-hadoop
-              name: s3-plugin
+              name: s3-plugin 
         - name: download-kafka-connectors
           image: busybox:latest  # Kafka 커넥터 설치를 위한 Init 컨테이너
           command:
@@ -47,15 +47,28 @@ spec:
             - -c
             - |
               mkdir -p /opt/flink/lib/custom-lib/  # 새 디렉토리 생성
-              wget https://repo1.maven.org/maven2/org/apache/flink/flink-connector-kafka/1.15.0/flink-connector-kafka-1.15.0.jar -P /opt/flink/lib/custom-lib/ && \
-              wget https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/1.15.0/flink-sql-connector-kafka-1.15.0.jar -P /opt/flink/lib/custom-lib/ && \
-              wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.7.0/kafka-clients-3.7.0.jar -P /opt/flink/lib/custom-lib/
+              wget https://repo1.maven.org/maven2/org/apache/flink/flink-connector-kafka/1.17.0/flink-connector-kafka-1.17.0.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/1.17.0/flink-sql-connector-kafka-1.17.0.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.7.0/kafka-clients-3.7.0.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo.maven.apache.org/maven2/org/apache/iceberg/iceberg-flink-runtime-1.17/1.3.0/iceberg-flink-runtime-1.17-1.3.0.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-hive-metastore/1.3.0/iceberg-hive-metastore-1.3.0.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/hive/hive-metastore/3.1.2/hive-metastore-3.1.2.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/hive/hive-common/3.1.2/hive-common-3.1.2.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/hive/hive-exec/3.1.2/hive-exec-3.1.2.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/commons-logging/commons-logging/1.2/commons-logging-1.2.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.30/slf4j-api-1.7.30.jar -P /opt/flink/lib/custom-lib/ && \
+              mkdir -p /opt/flink/lib/custom-lib/
+              wget https://repo1.maven.org/maven2/org/apache/thrift/libthrift/0.12.0/libthrift-0.12.0.jar -P /opt/flink/lib/custom-lib/ && \
+              mkdir -p /opt/flink/hadoop
+              wget https://archive.apache.org/dist/hadoop/common/hadoop-3.2.0/hadoop-3.2.0.tar.gz -O /opt/flink/hadoop/hadoop-3.2.0.tar.gz
+              tar -xzf /opt/flink/hadoop/hadoop-3.2.0.tar.gz -C /opt/flink/hadoop/
+              cp /opt/flink/hadoop/hadoop-3.2.0/share/hadoop/**/*.jar /opt/flink/lib/custom-lib/
           volumeMounts:
             - mountPath: /opt/flink/lib/custom-lib/
               name: flink-lib
       containers:
         - name: flink-main-container
-          image: flink:1.15.0  # 사용할 Flink 도커 이미지
+          image: flink:1.17.0  # 사용할 Flink 도커 이미지
           volumeMounts:
             - mountPath: /opt/flink/plugins/s3-fs-hadoop
               name: s3-plugin  # Init Container에서 설치한 플러그인을 Main Container에서 사용
