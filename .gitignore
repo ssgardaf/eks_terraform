@@ -23,3 +23,4 @@ flink-kafka-example/flink-kafka-example/target/test-classes/com/example/AppTest.
 flink-kafka-example/target/maven-archiver/pom.properties
 backup.java
 pom_bk.xml
+.vscode/settings.json

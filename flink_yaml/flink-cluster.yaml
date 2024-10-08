@@ -10,20 +10,54 @@ spec:
     taskmanager.numberOfTaskSlots: "1"  # 각 TaskManager에 할당할 슬롯의 개수
     log.file: "/opt/flink/log/flink-app.log"  # 로그 파일 경로
     log4j.configurationFile: "file:/opt/flink/conf/log4j.properties"  # Log4j 설정 파일 경로
-    plugin.dir: /opt/flink/opt  # 플러그인 경로 설정
-    s3.fs.impl: org.apache.hadoop.fs.s3a.S3AFileSystem  # S3 파일 시스템 설정
+    classpath: "/opt/flink/lib/*:/opt/flink/lib/custom-lib/*"  # 필요한 경우 classpath를 추가
   jobManager:
     resource:
-      memory: "2048m"  # JobManager가 사용할 메모리 양
+      memory: "1024m"  # JobManager가 사용할 메모리 양
       cpu: 1  # JobManager가 사용할 CPU 코어 개수
     replicas: 1  # JobManager 인스턴스의 복제본 수 (보통 1개)
   taskManager:
     resource:
-      memory: "2048m"  # 각 TaskManager가 사용할 메모리 양
-      cpu: 1 # 각 TaskManager가 사용할 CPU 코어 개수
-    replicas: 1  # TaskManager 인스턴스의 복제본 수 (여기서는 1개)
+      memory: "1024m"  # 각 TaskManager가 사용할 메모리 양
+      cpu: 1  # 각 TaskManager가 사용할 CPU 코어 개수
+    replicas: 2  # TaskManager 인스턴스의 복제본 수 (여기서는 2개)
   podTemplate:
     spec:
+      volumes:
+        - name: s3-plugin
+          emptyDir: {}  # Flink 플러그인 설치에 사용할 임시 볼륨 정의
+        - name: flink-lib
+          emptyDir: {}  # 추가 라이브러리 JAR 파일을 위한 볼륨
+      initContainers:
+        - name: download-s3-plugin
+          image: busybox:latest  # S3 플러그인 설치를 위한 Init 컨테이너
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /opt/flink/plugins/s3-fs-hadoop/
+              wget https://repo1.maven.org/maven2/org/apache/flink/flink-s3-fs-hadoop/1.15.0/flink-s3-fs-hadoop-1.15.0.jar -P /opt/flink/plugins/s3-fs-hadoop/
+          volumeMounts:
+            - mountPath: /opt/flink/plugins/s3-fs-hadoop
+              name: s3-plugin
+        - name: download-kafka-connectors
+          image: busybox:latest  # Kafka 커넥터 설치를 위한 Init 컨테이너
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /opt/flink/lib/custom-lib/  # 새 디렉토리 생성
+              wget https://repo1.maven.org/maven2/org/apache/flink/flink-connector-kafka/1.15.0/flink-connector-kafka-1.15.0.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/flink/flink-sql-connector-kafka/1.15.0/flink-sql-connector-kafka-1.15.0.jar -P /opt/flink/lib/custom-lib/ && \
+              wget https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.7.0/kafka-clients-3.7.0.jar -P /opt/flink/lib/custom-lib/
+          volumeMounts:
+            - mountPath: /opt/flink/lib/custom-lib/
+              name: flink-lib
       containers:
-        - name: flink-main-container  # Pod 내의 주 컨테이너 이름
-          image: flink:1.15.0  # 사용할 Flink 도커 이미지 (여기서는 Flink 1.15 버전)
+        - name: flink-main-container
+          image: flink:1.15.0  # 사용할 Flink 도커 이미지
+          volumeMounts:
+            - mountPath: /opt/flink/plugins/s3-fs-hadoop
+              name: s3-plugin  # Init Container에서 설치한 플러그인을 Main Container에서 사용
+            - mountPath: /opt/flink/lib/custom-lib
+              name: flink-lib  # Init Container에서 다운로드한 라이브러리
