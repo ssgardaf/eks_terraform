@@ -13,19 +13,6 @@
 
 Terraform은 인프라를 코드로 관리할 수 있도록 해주는 도구입니다. 클라우드 인프라 자원(AWS, GCP, Azure 등)을 자동으로 생성하고 관리할 수 있습니다. 이 가이드에서는 Ubuntu 환경에서 Terraform을 설치하는 과정을 설명합니다.
 
-## 파일 구조
-
-Terraform을 설치하기 위해서는 다음과 같은 파일 구조가 필요합니다:
-
-<pre>
-<code>
-  terraform/
-  ├── vpc.tf                # VPC 및 네트워크 설정
-  ├── output.tf             # 출력 설정
-  ├── provider.tf           # AWS Provider 설정
-  ├── variables.tf          # 변수 설정
-</code>
-</pre>
 
 ## 설치 방법
 
